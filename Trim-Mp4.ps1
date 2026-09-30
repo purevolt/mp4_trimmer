@@ -47,6 +47,23 @@ function Convert-ToSeconds {
     return (($minutes * 60) + $seconds)
 }
 
+function Convert-SexagesimalToSeconds {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    # Parse HH:MM:SS.ffffff format
+    if ($Value -match '^(\d+):(\d{2}):(\d{2})') {
+        $hours = [int]$matches[1]
+        $minutes = [int]$matches[2]
+        $seconds = [int]$matches[3]
+        return (($hours * 3600) + ($minutes * 60) + $seconds)
+    }
+
+    throw "Could not parse duration format: $Value"
+}
+
 if (-not (Test-Path -LiteralPath $InputPath -PathType Leaf)) {
     throw "Input file not found: $InputPath"
 }
@@ -76,9 +93,10 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($durationOutput)) {
     throw "Could not determine video duration. Check that the file is a valid MP4 and FFmpeg is installed correctly."
 }
 
-# ffprobe returns seconds as a floating-point decimal, e.g. 455.12
-$totalDuration = [double]$durationOutput
-if ($endSeconds -gt [math]::Floor($totalDuration)) {
+$durationOutput = $durationOutput.Trim()
+$totalDuration = Convert-SexagesimalToSeconds -Value $durationOutput
+
+if ($endSeconds -gt $totalDuration) {
     throw "End time '$End' is beyond the video duration ($totalDuration seconds)."
 }
 
